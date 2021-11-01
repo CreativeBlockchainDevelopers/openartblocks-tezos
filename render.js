@@ -36,20 +36,31 @@ const render = async (script, tokenInfo, count) => {
 
   await driver.get("data:text/html;base64," + Buffer.from(htmlContent, 'utf-8').toString('base64'));
 
-  const [b64Img, metadata] = await driver.executeAsyncScript("wait(arguments[0]);");//arguments[arguments.length - 1]
+  const [metadata, b64Img, b64Thumb] = await driver.executeAsyncScript("wait(arguments[0]);");//arguments[arguments.length - 1]
 
   const path = `generated/${tokenInfo.tokenHash}.png`;
+  const thumbnailPath = `generated/thumb_${tokenInfo.tokenHash}.png`;
   const metadataPath = `generated/${tokenInfo.tokenHash}.json`;
   metadataCache[tokenInfo.tokenHash] = metadata;
   console.log(path);
 
   await writeFile(path, b64Img, { encoding: 'base64' });
+  await writeFile(thumbnailPath, b64Thumb, { encoding: 'base64' });
   await writeFile(metadataPath, JSON.stringify(metadata));
-  return path;
 }
 
 const getStaticImagePath = async (script, tokenInfo, count) => {
   const path = `generated/${tokenInfo.tokenHash}.png`;
+  try {
+    await access(path);
+  } catch {
+    await render(script, tokenInfo, count);
+  }
+  return path;
+}
+
+const getThumbnailPath = async (script, tokenInfo, count) => {
+  const path = `generated/thumb_${tokenInfo.tokenHash}.png`;
   try {
     await access(path);
   } catch {
@@ -73,4 +84,4 @@ const getMetadata = async (script, tokenInfo, count) => {
   return data;
 }
 
-module.exports = { getStaticImagePath, getMetadata };
+module.exports = { getStaticImagePath, getThumbnailPath, getMetadata };

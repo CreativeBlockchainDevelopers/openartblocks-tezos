@@ -1,5 +1,5 @@
 const express = require('express');
-const { getMetadata, getLive, getImage } = require('./api');
+const { getMetadata, getLive, getImage, getThumbnail } = require('./api');
 const compression = require('compression');
 const cors = require('cors');
 
@@ -24,6 +24,7 @@ app.use(express.static(publicAdminRoot));
 app.get('/api/:id', getMetadata);
 app.get('/live/:id', getLive);
 app.get('/static/:id', getImage);
+app.get('/thumbnail/:id', getThumbnail);
 
 app.listen(port, () => {
   console.log(`Maker listening on port ${port}`);

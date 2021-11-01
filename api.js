@@ -1,5 +1,5 @@
 const { parse } = require('./parse_script');
-const { getStaticImagePath, getMetadata: getGeneratedMetadata } = require('./render');
+const { getStaticImagePath, getThumbnailPath, getMetadata: getGeneratedMetadata } = require('./render');
 const { readFileSync } = require('fs');
 const provider = require('./tezos');
 
@@ -20,8 +20,8 @@ const HTML_p5 = readFileSync('templates/p5.html').toString();
 const HTML_svg = readFileSync('templates/svg.html').toString();
 const HTML = [HTML_p5, HTML_svg];
 
-function injectHTML(script, hash, html) {
-  return html.replace('{{INJECT_SCRIPT_HERE}}', script).replace('{{INJECT_HASH_HERE}}', hash);
+function injectHTML(script, info, html) {
+  return html.replace('{{INJECT_SCRIPT_HERE}}', script).replace('\'{{INJECT_INFO_HERE}}\'', JSON.stringify(info));
 }
 
 let infos = null;
@@ -98,9 +98,14 @@ const getMetadata = async (req, res) => {
     // minter: 'would require an index',
     artifactUri: `${HOST}/live/${id}`,
     displayUri: `${HOST}/static/${id}`,
-    // thumbnailUri: `${HOST}/${id}`,//TODO
+    thumbnailUri: `${HOST}/thumbnail/${id}`,
     // externalUri: `${HOST}/${id}`,//TODO
     isBooleanAmount: true,
+
+    // not standard
+    tokenId: tokenInfo.tokenId,
+    tokenHash: tokenInfo.tokenHash,
+
     ...generatedMetadata,
   };
 
@@ -111,11 +116,11 @@ const getLive = async (req, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) return res.sendStatus(404);
 
-  const tokenHash = await getTokenHash(id);
-  if (!tokenHash) return res.sendStatus(404);
+  const tokenInfo = await getTokenInfo(id);
+  if (!tokenInfo) return res.sendStatus(404);
 
   const script = await getScript();
-  const html = injectHTML(script, tokenHash, infos.html);
+  const html = injectHTML(script, tokenInfo, infos.html);
 
   return res.setHeader('Content-type', 'text/html').send(html);
 }
@@ -136,4 +141,20 @@ const getImage = async (req, res) => {
   return res.sendFile(path, { root: __dirname });
 }
 
-module.exports = { getMetadata, getLive, getImage };
+const getThumbnail = async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) return res.sendStatus(404);
+
+  const tokenInfo = await getTokenInfo(id);
+  if (!tokenInfo) return res.sendStatus(404);
+
+  const count = await getCount();
+  if (count == undefined) return res.sendStatus(404);
+
+  const script = await getScript();
+  const path = await getThumbnailPath(script, tokenInfo, count);
+
+  return res.sendFile(path, { root: __dirname });
+}
+
+module.exports = { getMetadata, getLive, getImage, getThumbnail };
