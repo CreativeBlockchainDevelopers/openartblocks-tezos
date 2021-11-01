@@ -5,13 +5,13 @@
   <meta charset="UTF-8">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.min.js"></script>
   <script>
-    window.tokenHash = "{{INJECT_HASH_HERE}}";
+    window.info = '{{INJECT_INFO_HERE}}';
   </script>
   <script>{{INJECT_SCRIPT_HERE}}</script>
   <script>
     let count = {{INJECT_COUNT_HERE}};
     let resolve;
-    const shot = () => resolve(document.getElementsByTagName('canvas')[0].toDataURL('image/png').substring(22));
+    const shot = () => resolve([document.getElementsByTagName('canvas')[0].toDataURL('image/png').substring(22), window.metadata]);
 
     const _draw = window.draw;
     window.draw = () => {

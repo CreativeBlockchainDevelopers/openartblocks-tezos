@@ -1,16 +1,16 @@
 const webdriver = require('selenium-webdriver');
 const chrome = require('selenium-webdriver/chrome');
 const { readFileSync, promises } = require('fs');
-const { writeFile, access } = promises;
+const { writeFile, readFile, access } = promises;
 
 const HTML_p5 = readFileSync('templates/p5_render.html').toString();
 
 const buildDriver = () => {
   let options = new chrome.Options();
-  
+
   options.setChromeBinaryPath(process.env.CHROME_BINARY_PATH);
   let serviceBuilder = new chrome.ServiceBuilder(process.env.CHROME_DRIVER_PATH);
-  
+
 
   //Don't forget to add these for heroku
   options.headless();
@@ -18,37 +18,59 @@ const buildDriver = () => {
   options.addArguments("--no-sandbox");
 
   let driver = new webdriver.Builder()
-      .forBrowser('chrome')
-      .setChromeOptions(options)
-      .setChromeService(serviceBuilder)
-      .build();
+    .forBrowser('chrome')
+    .setChromeOptions(options)
+    .setChromeService(serviceBuilder)
+    .build();
 
   return driver;
 }
+
+const metadataCache = {};
+
 const driver = buildDriver();
 
-const render = async (script, tokenHash, count) => {
-  const htmlContent = HTML_p5.replace('{{INJECT_SCRIPT_HERE}}', script).replace('{{INJECT_HASH_HERE}}', tokenHash).replace('{{INJECT_COUNT_HERE}}', count);
+const render = async (script, tokenInfo, count) => {
+  const htmlContent = HTML_p5.replace('{{INJECT_SCRIPT_HERE}}', script).replace('\'{{INJECT_INFO_HERE}}\'', JSON.stringify(tokenInfo)).replace('{{INJECT_COUNT_HERE}}', count);
+  await writeFile('/tmp/test.html', htmlContent);
 
   await driver.get("data:text/html;base64," + Buffer.from(htmlContent, 'utf-8').toString('base64'));
 
-  const b64Img = await driver.executeAsyncScript("wait(arguments[0]);");//arguments[arguments.length - 1]
+  const [b64Img, metadata] = await driver.executeAsyncScript("wait(arguments[0]);");//arguments[arguments.length - 1]
 
-  const path = `generated/${tokenHash}.png`;
+  const path = `generated/${tokenInfo.tokenHash}.png`;
+  const metadataPath = `generated/${tokenInfo.tokenHash}.json`;
+  metadataCache[tokenInfo.tokenHash] = metadata;
   console.log(path);
+
   await writeFile(path, b64Img, { encoding: 'base64' });
+  await writeFile(metadataPath, JSON.stringify(metadata));
   return path;
 }
 
-const getStaticImagePath = async (script, tokenHash, count) => {
-  const path = `generated/${tokenHash}.png`;
+const getStaticImagePath = async (script, tokenInfo, count) => {
+  const path = `generated/${tokenInfo.tokenHash}.png`;
   try {
     await access(path);
   } catch {
-    await render(script, tokenHash, count);
+    await render(script, tokenInfo, count);
   }
   return path;
 }
 
+const getMetadata = async (script, tokenInfo, count) => {
+  const { tokenHash } = tokenInfo;
+  if (metadataCache[tokenHash]) return metadataCache[tokenHash];
 
-module.exports = { getStaticImagePath };
+  const path = `generated/${tokenHash}.json`;
+  try {
+    await access(path);
+  } catch {
+    await render(script, tokenInfo, count);
+  }
+  const rawData = await readFile(path);
+  const data = JSON.parse(rawData);
+  return data;
+}
+
+module.exports = { getStaticImagePath, getMetadata };

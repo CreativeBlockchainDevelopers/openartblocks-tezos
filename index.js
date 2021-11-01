@@ -23,7 +23,7 @@ app.use(express.static(publicAdminRoot));
 
 app.get('/api/:id', getMetadata);
 app.get('/live/:id', getLive);
-app.get('/:id', getImage);
+app.get('/static/:id', getImage);
 
 app.listen(port, () => {
   console.log(`Maker listening on port ${port}`);

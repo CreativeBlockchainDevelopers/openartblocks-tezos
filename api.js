@@ -1,5 +1,5 @@
 const { parse } = require('./parse_script');
-const { getStaticImagePath } = require('./render');
+const { getStaticImagePath, getMetadata: getGeneratedMetadata } = require('./render');
 const { readFileSync } = require('fs');
 const provider = require('./tezos');
 
@@ -70,24 +70,38 @@ async function getTokenHash(id) {
 
 const tokenHashes = {};
 
+async function getTokenInfo(id) {
+  return {
+    tokenHash: await getTokenHash(id),
+    tokenId: id,
+  };
+}
+
 const getMetadata = async (req, res) => {
 
   const id = parseInt(req.params.id);
   if (isNaN(id)) return res.sendStatus(404);
 
-  const tokenHash = await getTokenHash(id);
-  if (!tokenHash) return res.sendStatus(404);
+  const tokenInfo = await getTokenInfo(id);
+  if (!tokenInfo) return res.sendStatus(404);
 
-  const attributes = traits(tokenHash)
-  // CHECK OPENSEA METADATA STANDARD DOCUMENTATION https://docs.opensea.io/docs/metadata-standards
+  const count = await getCount();
+  if (count == undefined) return res.sendStatus(404);
+
+  const script = await getScript();
+  const generatedMetadata = await getGeneratedMetadata(script, tokenInfo, count);
+
+  // CHECK TZIP-21 METADATA STANDARD SPECS https://gitlab.com/tezos/tzip/-/blob/master/proposals/tzip-21/tzip-21.md
   let metadata = {
-    name: `MyToken #${id}`,
-    description: 'My Token description',
-    tokenID: id,
-    token_hash: tokenHash,
-    image: `${HOST}/${id}`,
-    animation_url: `${HOST}/live/${id}`,
-    attributes,
+    decimals: 0,
+    symbol: 'TZK',//TODO dynamic
+    // minter: 'would require an index',
+    artifactUri: `${HOST}/live/${id}`,
+    displayUri: `${HOST}/static/${id}`,
+    // thumbnailUri: `${HOST}/${id}`,//TODO
+    // externalUri: `${HOST}/${id}`,//TODO
+    isBooleanAmount: true,
+    ...generatedMetadata,
   };
 
   res.json(metadata);
@@ -110,14 +124,14 @@ const getImage = async (req, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) return res.sendStatus(404);
 
-  const tokenHash = await getTokenHash(id);
-  if (!tokenHash) return res.sendStatus(404);
+  const tokenInfo = await getTokenInfo(id);
+  if (!tokenInfo) return res.sendStatus(404);
 
   const count = await getCount();
   if (count == undefined) return res.sendStatus(404);
 
   const script = await getScript();
-  const path = await getStaticImagePath(script, tokenHash, count);
+  const path = await getStaticImagePath(script, tokenInfo, count);
 
   return res.sendFile(path, { root: __dirname });
 }
