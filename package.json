@@ -6,6 +6,7 @@
     "@taquito/taquito": "^10.2.1",
     "@taquito/tzip12": "^10.2.1",
     "@taquito/tzip16": "^10.2.1",
+    "async-mutex": "^0.3.2",
     "base85": "^3.1.0",
     "compression": "^1.7.4",
     "cors": "^2.8.5",

@@ -1,5 +1,6 @@
 const webdriver = require('selenium-webdriver');
 const chrome = require('selenium-webdriver/chrome');
+const { Mutex } = require("async-mutex");
 const { readFileSync, promises } = require('fs');
 const { writeFile, readFile, access } = promises;
 
@@ -29,14 +30,24 @@ const buildDriver = () => {
 const metadataCache = {};
 
 const driver = buildDriver();
+const mutex = new Mutex();
+
+const getData = async (URI) => {
+  const release = await mutex.acquire();
+  try {
+    await driver.get(URI);
+
+    return await driver.executeAsyncScript("wait(arguments[0]);");//arguments[arguments.length - 1]
+  } finally {
+    release();
+  }
+}
 
 const render = async (script, tokenInfo, count) => {
   const htmlContent = HTML_p5.replace('{{INJECT_SCRIPT_HERE}}', script).replace('\'{{INJECT_INFO_HERE}}\'', JSON.stringify(tokenInfo)).replace('{{INJECT_COUNT_HERE}}', count);
   await writeFile('/tmp/test.html', htmlContent);
 
-  await driver.get("data:text/html;base64," + Buffer.from(htmlContent, 'utf-8').toString('base64'));
-
-  const [metadata, b64Img, b64Thumb] = await driver.executeAsyncScript("wait(arguments[0]);");//arguments[arguments.length - 1]
+  const [metadata, b64Img, b64Thumb] = await getData("data:text/html;base64," + Buffer.from(htmlContent, 'utf-8').toString('base64'));
 
   const path = `generated/${tokenInfo.tokenHash}.png`;
   const thumbnailPath = `generated/thumb_${tokenInfo.tokenHash}.png`;
