@@ -22,8 +22,7 @@ Tezos.contract.at(CONTRACT_ADDRESS, tzip16).then(c => contract = c);
 
 const getHash = async (id) => {
   const storage = await contract.storage();
-  const metadata = await storage.token_metadata.get(id);
-  return await metadata.token_info.get("token_hash");
+  return await storage.hashes.get(id);
 };
 
 const getScript = async () => {
