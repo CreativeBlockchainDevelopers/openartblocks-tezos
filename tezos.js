@@ -27,7 +27,7 @@ const getHash = async (id) => {
 
 const getScript = async () => {
   const storage = await contract.storage();
-  return await storage.scripts.get(0);
+  return storage.script;
 };
 
 const getTotalNumber = async () => {
