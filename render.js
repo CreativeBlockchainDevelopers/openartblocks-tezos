@@ -3,8 +3,12 @@ const chrome = require('selenium-webdriver/chrome');
 const { Mutex } = require("async-mutex");
 const { readFileSync, promises } = require('fs');
 const { writeFile, readFile, access } = promises;
+const Jimp = require('jimp');
 
 const HTML_p5 = readFileSync('templates/p5_render.html').toString();
+const HTML_svg = readFileSync('templates/svg_render.html').toString();
+
+const HTMLs = [HTML_p5, HTML_svg];
 
 const buildDriver = () => {
   let options = new chrome.Options();
@@ -12,6 +16,7 @@ const buildDriver = () => {
   options.setChromeBinaryPath(process.env.CHROME_BINARY_PATH);
   let serviceBuilder = new chrome.ServiceBuilder(process.env.CHROME_DRIVER_PATH);
 
+  options.windowSize({width: 1024, height: 1024});
 
   //Don't forget to add these for heroku
   options.headless();
@@ -43,11 +48,11 @@ const getData = async (URI) => {
   }
 }
 
-const render = async (script, tokenInfo, count) => {
-  const htmlContent = HTML_p5.replace('{{INJECT_SCRIPT_HERE}}', script).replace('\'{{INJECT_INFO_HERE}}\'', JSON.stringify(tokenInfo)).replace('{{INJECT_COUNT_HERE}}', count);
+const render = async ({ script, type }, tokenInfo, count) => {
+  const htmlContent = HTMLs[type].replace('{{INJECT_SCRIPT_HERE}}', script).replace('\'{{INJECT_INFO_HERE}}\'', JSON.stringify(tokenInfo)).replace('{{INJECT_COUNT_HERE}}', count);
   await writeFile('/tmp/test.html', htmlContent);
 
-  const [metadata, b64Img, b64Thumb] = await getData("data:text/html;base64," + Buffer.from(htmlContent, 'utf-8').toString('base64'));
+  let [metadata, b64Img, b64Thumb] = await getData("data:text/html;base64," + Buffer.from(htmlContent, 'utf-8').toString('base64'));
 
   const path = `generated/${tokenInfo.tokenHash}.png`;
   const thumbnailPath = `generated/thumb_${tokenInfo.tokenHash}.png`;
@@ -55,8 +60,16 @@ const render = async (script, tokenInfo, count) => {
   metadataCache[tokenInfo.tokenHash] = metadata;
   console.log(path);
 
+  if (b64Img === null) {
+    const svg = driver.findElement(webdriver.By.id('render'));
+    b64Img = await svg.takeScreenshot();
+    const img = await Jimp.read(Buffer.from(b64Img, 'base64'));
+    img.resize(350, 350).write(thumbnailPath);
+  } else {
+    await writeFile(thumbnailPath, b64Thumb, { encoding: 'base64' });
+  }
+
   await writeFile(path, b64Img, { encoding: 'base64' });
-  await writeFile(thumbnailPath, b64Thumb, { encoding: 'base64' });
   await writeFile(metadataPath, JSON.stringify(metadata));
 }
 

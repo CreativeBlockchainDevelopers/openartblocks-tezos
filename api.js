@@ -20,7 +20,7 @@ const HTML_p5 = readFileSync('templates/p5.html').toString();
 const HTML_svg = readFileSync('templates/svg.html').toString();
 const HTML = [HTML_p5, HTML_svg];
 
-function injectHTML(script, info, html) {
+function injectHTML({ script }, info, html) {
   return html.replace('{{INJECT_SCRIPT_HERE}}', script).replace('\'{{INJECT_INFO_HERE}}\'', JSON.stringify(info));
 }
 
@@ -34,6 +34,7 @@ async function refreshInfos() {
     string: js,
     html: HTML[Number(res[0])] ?? null,
     lastUpdated: new Date(),
+    scriptType: Number(res[0]),
   };
 }
 setTimeout(refreshInfos, 5000);
@@ -45,7 +46,7 @@ async function refreshIfNeeded() {
 
 async function getScript() {
   await refreshIfNeeded();
-  return infos.string;
+  return { script: infos.string, type: infos.scriptType };
 }
 
 async function getCount() {
