@@ -101,7 +101,6 @@ const generateMetadata = async (id) => {
   // CHECK TZIP-21 METADATA STANDARD SPECS https://gitlab.com/tezos/tzip/-/blob/master/proposals/tzip-21/tzip-21.md
   let metadata = {
     decimals: 0,
-    symbol: 'TZK',//TODO dynamic
     // minter: 'would require an index',
     artifactUri: `${HOST}/live/${id}`,
     displayUri: `${HOST}/static/${id}`,
