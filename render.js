@@ -49,7 +49,11 @@ const getData = async (URI) => {
 }
 
 const render = async ({ script, type }, tokenInfo, count) => {
-  const htmlContent = HTMLs[type].replace('{{INJECT_SCRIPT_HERE}}', script).replace('\'{{INJECT_INFO_HERE}}\'', JSON.stringify(tokenInfo)).replace('{{INJECT_COUNT_HERE}}', count);
+  const htmlContent = inject(HTMLs[type], {
+    script,
+    info: JSON.stringify(tokenInfo),
+    count,
+  });
   await writeFile('/tmp/test.html', htmlContent);
 
   let [metadata, b64Img, b64Thumb] = await getData("data:text/html;base64," + Buffer.from(htmlContent, 'utf-8').toString('base64'));
@@ -58,7 +62,6 @@ const render = async ({ script, type }, tokenInfo, count) => {
   const thumbnailPath = `generated/thumb_${tokenInfo.tokenHash}.png`;
   const metadataPath = `generated/${tokenInfo.tokenHash}.json`;
   metadataCache[tokenInfo.tokenHash] = metadata;
-  console.log(path);
 
   if (b64Img === null) {
     const svg = driver.findElement(webdriver.By.id('render'));
@@ -108,4 +111,6 @@ const getMetadata = async (script, tokenInfo, count) => {
   return data;
 }
 
-module.exports = { getStaticImagePath, getThumbnailPath, getMetadata };
+const inject = (str, map) => Object.entries(map)
+  .reduce((acc, [k, v]) => acc.replaceAll(`\'{{INJECT_${k.toUpperCase()}_HERE}}\'`, v), str);
+module.exports = { getStaticImagePath, getThumbnailPath, getMetadata, inject };

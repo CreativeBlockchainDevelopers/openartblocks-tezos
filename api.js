@@ -1,5 +1,5 @@
 const { parse } = require('./parse_script');
-const { getStaticImagePath, getThumbnailPath, getMetadata: getGeneratedMetadata } = require('./render');
+const { getStaticImagePath, getThumbnailPath, getMetadata: getGeneratedMetadata, inject } = require('./render');
 const { readFileSync } = require('fs');
 const provider = require('./tezos');
 
@@ -20,8 +20,16 @@ const HTML_p5 = readFileSync('templates/p5.html').toString();
 const HTML_svg = readFileSync('templates/svg.html').toString();
 const HTML = [HTML_p5, HTML_svg];
 
-function injectHTML({ script }, info, html) {
-  return html.replace('{{INJECT_SCRIPT_HERE}}', script).replace('\'{{INJECT_INFO_HERE}}\'', JSON.stringify(info));
+function injectHTML({script}, info, metadata, html) {
+  const map = {
+    script,
+    info: JSON.stringify(info),
+    title: metadata.name,
+    description: metadata.description,
+    url: metadata.externalUri,
+    image: metadata.thumbnailUri,
+  };
+  return inject(html, map);
 }
 
 let infos = null;
@@ -78,16 +86,14 @@ async function getTokenInfo(id) {
   };
 }
 
-const getMetadata = async (req, res) => {
-
-  const id = parseInt(req.params.id);
-  if (isNaN(id)) return res.sendStatus(404);
+const generateMetadata = async (id) => {
+  if (isNaN(id)) throw 404;
 
   const tokenInfo = await getTokenInfo(id);
-  if (!tokenInfo) return res.sendStatus(404);
+  if (!tokenInfo) throw 404;
 
   const count = await getCount();
-  if (count == undefined) return res.sendStatus(404);
+  if (count == undefined) throw 404;
 
   const script = await getScript();
   const generatedMetadata = await getGeneratedMetadata(script, tokenInfo, count);
@@ -100,7 +106,7 @@ const getMetadata = async (req, res) => {
     artifactUri: `${HOST}/live/${id}`,
     displayUri: `${HOST}/static/${id}`,
     thumbnailUri: `${HOST}/thumbnail/${id}`,
-    // externalUri: `${HOST}/${id}`,//TODO
+    externalUri: `${HOST}/${id}`,//TODO
     isBooleanAmount: true,
 
     // not standard
@@ -109,8 +115,17 @@ const getMetadata = async (req, res) => {
 
     ...generatedMetadata,
   };
+  return metadata;
+}
 
-  res.json(metadata);
+const getMetadata = async (req, res) => {
+  const id = parseInt(req.params.id);
+  try {
+    const metadata = await generateMetadata(id);
+    return res.json(metadata);
+  } catch (status) {
+    return res.sendStatus(status);
+  }
 }
 
 const getLive = async (req, res) => {
@@ -121,7 +136,8 @@ const getLive = async (req, res) => {
   if (!tokenInfo) return res.sendStatus(404);
 
   const script = await getScript();
-  const html = injectHTML(script, tokenInfo, infos.html);
+  const metadata = await generateMetadata(id);
+  const html = injectHTML(script, tokenInfo, metadata, infos.html);
 
   return res.setHeader('Content-type', 'text/html').send(html);
 }
