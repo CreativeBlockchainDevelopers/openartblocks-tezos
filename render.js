@@ -42,7 +42,12 @@ const getData = async (URI) => {
   try {
     await driver.get(URI);
 
-    return await driver.executeAsyncScript("wait(arguments[0]);");//arguments[arguments.length - 1]
+    const res = await driver.executeAsyncScript("wait(arguments[0]);");//arguments[arguments.length - 1]
+    if (res[1] === null) {
+      const svg = driver.findElement(webdriver.By.id('render'));
+      res[1] = await svg.takeScreenshot();
+    }
+    return res;
   } finally {
     release();
   }
@@ -54,7 +59,7 @@ const render = async ({ script, type }, tokenInfo, count) => {
     info: JSON.stringify(tokenInfo),
     count,
   });
-  await writeFile('/tmp/test.html', htmlContent);
+  // await writeFile('/tmp/test.html', htmlContent);
 
   let [metadata, b64Img, b64Thumb] = await getData("data:text/html;base64," + Buffer.from(htmlContent, 'utf-8').toString('base64'));
 
@@ -63,9 +68,7 @@ const render = async ({ script, type }, tokenInfo, count) => {
   const metadataPath = `generated/${tokenInfo.tokenHash}.json`;
   metadataCache[tokenInfo.tokenHash] = metadata;
 
-  if (b64Img === null) {
-    const svg = driver.findElement(webdriver.By.id('render'));
-    b64Img = await svg.takeScreenshot();
+  if (b64Thumb === null) {
     const img = await Jimp.read(Buffer.from(b64Img, 'base64'));
     img.resize(350, 350).write(thumbnailPath);
   } else {
