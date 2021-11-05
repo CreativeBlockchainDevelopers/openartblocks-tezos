@@ -105,7 +105,6 @@ const generateMetadata = async (id) => {
     artifactUri: `${HOST}/live/${id}`,
     displayUri: `${HOST}/static/${id}`,
     thumbnailUri: `${HOST}/thumbnail/${id}`,
-    externalUri: `${HOST}/${id}`,//TODO
     isBooleanAmount: true,
 
     // not standard
