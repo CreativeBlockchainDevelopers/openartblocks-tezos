@@ -3,8 +3,8 @@ const { Tzip16Module, tzip16 } = require('@taquito/tzip16');
 const { Tzip12Module, tzip12 } = require('@taquito/tzip12');
 
 
-//const TEZOS_NODE_URI = process.env.TEZOS_NODE_URI || "https://mainnet.api.tez.ie";
-const TEZOS_NODE_URI = process.env.TEZOS_NODE_URI || "https://granadanet.smartpy.io";
+const TEZOS_NODE_URI = process.env.TEZOS_NODE_URI || "https://mainnet.api.tez.ie";
+// const TEZOS_NODE_URI = process.env.TEZOS_NODE_URI || "https://granadanet.smartpy.io";
 
 const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS;
 
