@@ -17,21 +17,20 @@ function hex2utf8(hexx) {
   const utf8 = buff.toString('utf-8');
   return utf8;
 }
-let contract;
-Tezos.contract.at(CONTRACT_ADDRESS, tzip16).then(c => contract = c);
+const contractPromise = Tezos.contract.at(CONTRACT_ADDRESS, tzip16);
 
 const getHash = async (id) => {
-  const storage = await contract.storage();
+  const storage = await (await contractPromise).storage();
   return await storage.hashes.get(id);
 };
 
 const getScript = async () => {
-  const storage = await contract.storage();
+  const storage = await (await contractPromise).storage();
   return storage.script;
 };
 
 const getTotalNumber = async () => {
-  const storage = await contract.storage();
+  const storage = await (await contractPromise).storage();
   return storage.all_tokens.toNumber();
 };
 
