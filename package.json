@@ -2,6 +2,9 @@
   "name": "openartblocks-server",
   "version": "1.0.0",
   "main": "index.js",
+  "engines" : {
+    "node" : "~16"
+  },
   "dependencies": {
     "@taquito/taquito": "^10.2.1",
     "@taquito/tzip12": "^10.2.1",
