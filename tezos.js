@@ -34,4 +34,22 @@ const getTotalNumber = async () => {
   return storage.all_tokens.toNumber();
 };
 
-module.exports = { getHash, getScript, getTotalNumber };
+const getOwners = async () => {
+  const storage = await (await contractPromise).storage();
+  const n = storage.all_tokens.toNumber();
+  const allTokenIds = Array(n).fill(0).map((_, i) => i);
+  const ledger = new Map([
+    ...(await storage.ledger.getMultipleValues(allTokenIds)).entries(),
+  ]);
+
+  const owners = {};
+  for (const [id, add] of ledger.entries()) {
+    if (!owners[add]) owners[add] = [];
+    owners[add].push(id);
+  }
+  return owners;
+};
+
+setTimeout(getOwners, 2000)
+
+module.exports = { getHash, getScript, getOwners, getTotalNumber };

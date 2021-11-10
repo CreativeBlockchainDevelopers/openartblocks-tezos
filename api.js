@@ -47,6 +47,15 @@ async function refreshInfos() {
 }
 setTimeout(refreshInfos, 5000);
 
+
+let owners = provider.getOwners();
+
+setInterval(async () => {
+  const ownersPromise = provider.getOwners();
+  await ownersPromise;
+  owners = ownersPromise;
+}, 60 * 1000);
+
 const TIMEOUT = 15 * 60 * 1000;
 async function refreshIfNeeded() {
   if (!infos || new Date() - infos.lastUpdated > TIMEOUT) await refreshInfos();
@@ -172,4 +181,11 @@ const getThumbnail = async (req, res) => {
   return res.sendFile(path, { root: __dirname });
 }
 
-module.exports = { getMetadata, getLive, getImage, getThumbnail };
+const getOwnedIds = async (req, res) => {
+  const address = req.params.address;
+
+  const ids = (await owners)[address];
+  return res.json(ids ?? []);
+}
+
+module.exports = { getMetadata, getLive, getImage, getThumbnail, getOwnedIds };
