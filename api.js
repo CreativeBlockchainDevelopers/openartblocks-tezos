@@ -57,9 +57,10 @@ async function initMetadataStats() {
 
 async function updateMetadataStats(allStats, start, stop) {
   const metadatas = [];
-  for (let i = start; i <= stop; i += 10) {
+  const batchSize = 5;
+  for (let i = start; i <= stop; i += batchSize) {
     const metadatasPromise = [];
-    for (let j = i; j < i + 10 && j <= stop; j++)
+    for (let j = i; j < i + batchSize && j <= stop; j++)
       metadatasPromise.push(generateMetadata(j));
 
     metadatas.push(...(await Promise.all(metadatasPromise)));
