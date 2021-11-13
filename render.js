@@ -5,6 +5,7 @@ const { readFileSync, promises } = require('fs');
 const { writeFile, readFile, access } = promises;
 const Jimp = require('jimp');
 
+const redis = require('./redis');
 const HTML_p5 = readFileSync('templates/p5_render.html').toString();
 const HTML_svg = readFileSync('templates/svg_render.html').toString();
 
@@ -16,7 +17,7 @@ const buildDriver = () => {
   options.setChromeBinaryPath(process.env.CHROME_BINARY_PATH);
   let serviceBuilder = new chrome.ServiceBuilder(process.env.CHROME_DRIVER_PATH);
 
-  options.windowSize({width: 1024, height: 1024});
+  options.windowSize({ width: 1024, height: 1024 });
 
   //Don't forget to add these for heroku
   options.headless();
@@ -65,7 +66,6 @@ const render = async ({ script, type }, tokenInfo, count) => {
 
   const path = `generated/${tokenInfo.tokenHash}.png`;
   const thumbnailPath = `generated/thumb_${tokenInfo.tokenHash}.png`;
-  const metadataPath = `generated/${tokenInfo.tokenHash}.json`;
   metadataCache[tokenInfo.tokenHash] = metadata;
 
   if (b64Thumb === null) {
@@ -76,7 +76,9 @@ const render = async ({ script, type }, tokenInfo, count) => {
   }
 
   await writeFile(path, b64Img, { encoding: 'base64' });
-  await writeFile(metadataPath, JSON.stringify(metadata));
+  await redis.setMetadata(tokenInfo.tokenHash, metadata);
+
+  return { metadata };
 }
 
 const getStaticImagePath = async (script, tokenInfo, count) => {
@@ -103,14 +105,18 @@ const getMetadata = async (script, tokenInfo, count) => {
   const { tokenHash } = tokenInfo;
   if (metadataCache[tokenHash]) return metadataCache[tokenHash];
 
-  const path = `generated/${tokenHash}.json`;
-  try {
-    await access(path);
-  } catch {
-    await render(script, tokenInfo, count);
+  let data;
+  {
+    const meta = await redis.getMetadata(tokenHash);
+    if (meta) {
+      data = meta;
+      metadataCache[tokenHash] = meta;
+    }
+    else {
+      const { metadata } = await render(script, tokenInfo, count);
+      data = metadata;
+    }
   }
-  const rawData = await readFile(path);
-  const data = JSON.parse(rawData);
   return data;
 }
 
