@@ -1,5 +1,4 @@
-import { createClient } from 'redis';
-import { getMetadata } from './render';
+const { createClient } = require('redis');
 
 const client = (async () => {
   const client = createClient(process.env.REDISCLOUD_URL, { no_ready_check: true });
