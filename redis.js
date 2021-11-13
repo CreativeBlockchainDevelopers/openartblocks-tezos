@@ -14,7 +14,7 @@ const getMetadata = async (tokenHash) => {
 
 const setMetadata = async (tokenHash, metadata) => {
   const key = `metadata_${tokenHash}`;
-  await (await client).set(key, metadata);
+  await (await client).set(key, JSON.stringify(metadata));
 };
 
 module.exports = { getMetadata, setMetadata };
