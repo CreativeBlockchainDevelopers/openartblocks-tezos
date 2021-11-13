@@ -161,7 +161,7 @@ const getMetadata = async (req, res) => {
   try {
     const metadata = await generateMetadata(id);
 
-    if (statsHighestKnownToken != null && id > statsHighestKnownToken) {
+    if (statsHighestKnownToken !== null && id > statsHighestKnownToken) {
       stats = updateMetadataStats((await stats), statsHighestKnownToken + 1, id);
     }
 
@@ -191,7 +191,7 @@ const getMetadataStats = async (req, res) => {
       statsMetadata[name] = allStats.get(name).get(value) / (statsHighestKnownToken + 1);
     });
 
-    if (statsHighestKnownToken != null && id > statsHighestKnownToken) {
+    if (statsHighestKnownToken !== null && id > statsHighestKnownToken) {
       stats = updateMetadataStats((await stats), statsHighestKnownToken + 1, id);
     }
 
