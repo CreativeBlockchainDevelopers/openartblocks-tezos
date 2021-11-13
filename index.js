@@ -1,5 +1,5 @@
 const express = require('express');
-const { getMetadata, getLive, getImage, getOwnedIds, getThumbnail } = require('./api');
+const { getMetadata, getMetadataStats, getLive, getImage, getOwnedIds, getThumbnail } = require('./api');
 const compression = require('compression');
 const cors = require('cors');
 
@@ -23,6 +23,7 @@ app.use(express.static(publicAdminRoot));
 
 app.get('/owned/:address', getOwnedIds);
 app.get('/api/:id', getMetadata);
+app.get('/stats/:id', getMetadataStats);
 app.get('/live/:id', getLive);
 app.get('/static/:id', getImage);
 app.get('/thumbnail/:id', getThumbnail);

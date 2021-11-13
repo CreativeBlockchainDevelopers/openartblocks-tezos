@@ -47,8 +47,38 @@ async function refreshInfos() {
 }
 setTimeout(refreshInfos, 5000);
 
+async function initMetadataStats() {
+  const nTokens = await provider.getTotalNumber();
 
-let owners = provider.getOwners();
+  const allStats = await updateMetadataStats(new Map(), 0, nTokens - 1);
+
+  return allStats;
+}
+
+async function updateMetadataStats(allStats, start, stop) {
+  const metadatas = [];
+  for (let i = start; i <= stop; i += 10) {
+    const metadatasPromise = [];
+    for (let j = i; j < i + 10 && j <= stop; j++)
+      metadatasPromise.push(generateMetadata(j));
+
+    metadatas.push(...(await Promise.all(metadatasPromise)));
+  }
+
+  metadatas.forEach(metadata => {
+    metadata.attributes.forEach(attribute => {
+      const name = attribute.name;
+      const value = attribute.value;
+      if (!allStats.has(name)) allStats.set(name, new Map());
+      if (!allStats.get(name).has(value)) allStats.get(name).set(value, 0);
+      allStats.get(name).set(value, allStats.get(name).get(value) + 1);
+    });
+  });
+
+  statsHighestKnownToken = stop;
+
+  return allStats;
+}
 
 setInterval(async () => {
   const ownersPromise = provider.getOwners();
@@ -129,7 +159,35 @@ const getMetadata = async (req, res) => {
   const id = parseInt(req.params.id);
   try {
     const metadata = await generateMetadata(id);
+
+    if (statsHighestKnownToken != null && id > statsHighestKnownToken) {
+      stats = updateMetadataStats((await stats), statsHighestKnownToken + 1, id);
+    }
+
     return res.json(metadata);
+  } catch (status) {
+    return res.sendStatus(status);
+  }
+}
+
+const getMetadataStats = async (req, res) => {
+  const id = parseInt(req.params.id);
+  try {
+    const metadata = await generateMetadata(id);
+    const allStats = await stats;
+
+    const statsMetadata = {};
+    metadata.attributes.forEach(attribute => {
+      const name = attribute.name;
+      const value = attribute.value;
+      statsMetadata[name] = allStats.get(name).get(value) / (statsHighestKnownToken + 1);
+    });
+
+    if (statsHighestKnownToken != null && id > statsHighestKnownToken) {
+      stats = updateMetadataStats((await stats), statsHighestKnownToken + 1, id);
+    }
+
+    return res.json(statsMetadata);
   } catch (status) {
     return res.sendStatus(status);
   }
@@ -188,4 +246,8 @@ const getOwnedIds = async (req, res) => {
   return res.json(ids ?? []);
 }
 
-module.exports = { getMetadata, getLive, getImage, getThumbnail, getOwnedIds };
+let owners = provider.getOwners();
+let stats = initMetadataStats();
+let statsHighestKnownToken = null;
+
+module.exports = { getMetadata, getMetadataStats, getLive, getImage, getThumbnail, getOwnedIds };
