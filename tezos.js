@@ -1,7 +1,7 @@
 const { TezosToolkit } = require('@taquito/taquito');
 const { Tzip16Module, tzip16 } = require('@taquito/tzip16');
 const { Tzip12Module, tzip12 } = require('@taquito/tzip12');
-const { getTokenHash } = require('./redis');
+const { getTokenHash, setTokenHash } = require('./redis');
 
 
 const TEZOS_NODE_URI = process.env.TEZOS_NODE_URI || "https://mainnet.api.tez.ie";
@@ -30,13 +30,12 @@ const getHash = async (id) => {
 
   let tokenHash;
   tokenHash = await getTokenHash(0, id);
-  if (tokenHash !== undefined) {
-    return tokenHash;
-  }
+  if (tokenHash) return tokenHash;
 
   const storage = await (await contractPromise).storage();
   tokenHash = await storage.hashes.get(id);
   hashes.get(0).set(id, tokenHash);
+  setTokenHash(0, id, tokenHash);
 
   return tokenHash;
 };
