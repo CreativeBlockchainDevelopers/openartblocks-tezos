@@ -176,25 +176,24 @@ const getMetadataStats = async (req, res) => {
   try {
     const metadata = await generateMetadata(id);
 
-    const statsMetadata = await Promise.race([
+    const allStats = await Promise.race([
       (async () => {
-        const allStats = await stats;
-
-        const statsMetadata = {};
-        metadata.attributes.forEach(attribute => {
-          const name = attribute.name;
-          const value = attribute.value;
-          statsMetadata[name] = allStats.get(name).get(value) / (statsHighestKnownToken + 1);
-        });
-
-        if (statsHighestKnownToken != null && id > statsHighestKnownToken) {
-          stats = updateMetadataStats((await stats), statsHighestKnownToken + 1, id);
-        }
-
-        return statsMetadata;
+        return await stats;
       })(),
       new Promise((_, reject) => setTimeout(() => reject(408), 5000))
     ]);
+
+    const statsMetadata = {};
+
+    metadata.attributes.forEach(attribute => {
+      const name = attribute.name;
+      const value = attribute.value;
+      statsMetadata[name] = allStats.get(name).get(value) / (statsHighestKnownToken + 1);
+    });
+
+    if (statsHighestKnownToken != null && id > statsHighestKnownToken) {
+      stats = updateMetadataStats((await stats), statsHighestKnownToken + 1, id);
+    }
 
     return res.json(statsMetadata);
   } catch (status) {
