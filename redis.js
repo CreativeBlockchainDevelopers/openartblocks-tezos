@@ -9,7 +9,7 @@ const client = (async () => {
 
 const getMetadata = async (tokenHash) => {
   const key = `metadata_${tokenHash}`;
-  return (await client).get(key);
+  return JSON.parse(await (await client).get(key));
 };
 
 const setMetadata = async (tokenHash, metadata) => {
