@@ -7,14 +7,19 @@ const client = (async () => {
   return client;
 })();
 
-const getMetadata = async (tokenHash) => {
-  const key = `metadata_${tokenHash}`;
+const getMetadata = async (collectionId, tokenId) => {
+  const key = `metadata_${collectionId}_${tokenId}`;
   return JSON.parse(await (await client).get(key));
 };
 
-const setMetadata = async (tokenHash, metadata) => {
-  const key = `metadata_${tokenHash}`;
+const setMetadata = async (collectionId, tokenId, metadata) => {
+  const key = `metadata_${collectionId}_${tokenId}`;
   await (await client).set(key, JSON.stringify(metadata));
 };
 
-module.exports = { getMetadata, setMetadata };
+const getTokenHash = async (collectionId, tokenId) => {
+  return await getMetadata(collectionId, tokenId).tokenHash;
+};
+
+
+module.exports = { getMetadata, setMetadata, getTokenHash };

@@ -76,7 +76,7 @@ const render = async ({ script, type }, tokenInfo, count) => {
   }
 
   await writeFile(path, b64Img, { encoding: 'base64' });
-  await redis.setMetadata(tokenInfo.tokenHash, metadata);
+  await redis.setMetadata(0, tokenInfo.tokenId, metadata);
 
   return { metadata };
 }
@@ -102,12 +102,12 @@ const getThumbnailPath = async (script, tokenInfo, count) => {
 }
 
 const getMetadata = async (script, tokenInfo, count) => {
-  const { tokenHash } = tokenInfo;
+  const { tokenHash, tokenId } = tokenInfo;
   if (metadataCache[tokenHash]) return metadataCache[tokenHash];
 
   let data;
   {
-    const meta = await redis.getMetadata(tokenHash);
+    const meta = await redis.getMetadata(tokenId);
     if (meta) {
       data = meta;
       metadataCache[tokenHash] = meta;
