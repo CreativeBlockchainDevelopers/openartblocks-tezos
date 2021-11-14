@@ -20,7 +20,7 @@ const HTML_p5 = readFileSync('templates/p5.html').toString();
 const HTML_svg = readFileSync('templates/svg.html').toString();
 const HTML = [HTML_p5, HTML_svg];
 
-function injectHTML({script}, info, metadata, html) {
+function injectHTML({ script }, info, metadata, html) {
   const map = {
     script,
     info: JSON.stringify(info),
@@ -56,20 +56,18 @@ async function initMetadataStats() {
 }
 
 async function updateMetadataStats(allStats, start, stop) {
-  const metadatas = [];
+  const metadata = [];
   const batchSize = 5;
   for (let i = start; i <= stop; i += batchSize) {
-    const metadatasPromise = [];
+    const metadataPromise = [];
     for (let j = i; j < i + batchSize && j <= stop; j++)
-      metadatasPromise.push(generateMetadata(j));
+      metadataPromise.push(generateMetadata(j));
 
-    metadatas.push(...(await Promise.all(metadatasPromise)));
+    metadata.push(...(await Promise.all(metadataPromise)));
   }
 
-  metadatas.forEach(metadata => {
-    metadata.attributes.forEach(attribute => {
-      const name = attribute.name;
-      const value = attribute.value;
+  metadata.forEach(metadata => {
+    metadata.attributes.forEach(({name, value}) => {
       if (!allStats.has(name)) allStats.set(name, new Map());
       if (!allStats.get(name).has(value)) allStats.get(name).set(value, 0);
       allStats.get(name).set(value, allStats.get(name).get(value) + 1);
@@ -177,23 +175,19 @@ const getMetadataStats = async (req, res) => {
     const metadata = await generateMetadata(id);
 
     const allStats = await Promise.race([
-      (async () => {
-        return await stats;
-      })(),
+      stats,
       new Promise((_, reject) => setTimeout(() => reject(408), 5000))
     ]);
 
     const statsMetadata = {};
 
-    metadata.attributes.forEach(attribute => {
-      const name = attribute.name;
-      const value = attribute.value;
+    metadata.attributes.forEach(({ name, value }) => {
       const freq = (allStats.get(name).get(value) / (statsHighestKnownToken + 1))*100;
       statsMetadata[name] = freq !== 0 && freq !== 100 ? freq.toFixed(2) : freq.toString();
     });
 
     if (statsHighestKnownToken !== null && id > statsHighestKnownToken) {
-      stats = updateMetadataStats((await stats), statsHighestKnownToken + 1, id);
+      stats = updateMetadataStats(await stats, statsHighestKnownToken + 1, id);
     }
 
     return res.json(statsMetadata);
