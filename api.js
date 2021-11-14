@@ -121,6 +121,11 @@ async function getCount() {
   return infos.count;
 }
 
+async function getTokenCount() {
+  await refreshIfNeeded();
+  return infos.tokenCount;
+}
+
 async function getTokenHash(id) {
 
   if (tokenHashes[id] === undefined) {
@@ -153,6 +158,9 @@ const generateMetadata = async (id) => {
 
   const count = await getCount();
   if (count == undefined) throw 404;
+
+  const tokenCount = await getTokenCount();
+  if (id >= tokenCount) throw 404;
 
   const script = await getScript();
   const generatedMetadata = await getGeneratedMetadata(script, tokenInfo, count);
