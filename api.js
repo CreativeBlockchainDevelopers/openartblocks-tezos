@@ -3,6 +3,7 @@ const { getStaticImagePath, getThumbnailPath, getMetadata: getGeneratedMetadata,
 const { readFileSync } = require('fs');
 const provider = require('./tezos');
 const { Mutex } = require("async-mutex");
+const router = require("express").Router();
 
 const HOST = process.env.HOST ?? `http://localhost:${process.env.PORT || 3333}`;
 
@@ -144,8 +145,10 @@ async function getTokenHash(id) {
 const tokenHashes = {};
 
 async function getTokenInfo(id) {
+  const tokenHash = await getTokenHash(id);
+  if (!tokenHash) return null;
   return {
-    tokenHash: await getTokenHash(id),
+    tokenHash,
     tokenId: id,
   };
 }
@@ -158,9 +161,6 @@ const generateMetadata = async (id) => {
 
   const count = await getCount();
   if (count == undefined) throw 404;
-
-  const tokenCount = await getTokenCount();
-  if (id >= tokenCount) throw 404;
 
   const script = await getScript();
   const generatedMetadata = await getGeneratedMetadata(script, tokenInfo, count);
@@ -184,7 +184,7 @@ const generateMetadata = async (id) => {
 }
 
 const getMetadata = async (req, res) => {
-  const id = parseInt(req.params.id);
+  const { id } = req.body;
   try {
     const metadata = await generateMetadata(id);
 
@@ -199,7 +199,7 @@ const getMetadata = async (req, res) => {
 }
 
 const getMetadataStats = async (req, res) => {
-  const id = parseInt(req.params.id);
+  const { id } = req.body;
   try {
     const metadata = await generateMetadata(id);
 
@@ -226,11 +226,7 @@ const getMetadataStats = async (req, res) => {
 }
 
 const getLive = async (req, res) => {
-  const id = parseInt(req.params.id);
-  if (isNaN(id)) return res.sendStatus(404);
-
-  const tokenInfo = await getTokenInfo(id);
-  if (!tokenInfo) return res.sendStatus(404);
+  const { tokenInfo } = req.body;
 
   const script = await getScript();
   const metadata = await generateMetadata(id);
@@ -240,11 +236,7 @@ const getLive = async (req, res) => {
 }
 
 const getImage = async (req, res) => {
-  const id = parseInt(req.params.id);
-  if (isNaN(id)) return res.sendStatus(404);
-
-  const tokenInfo = await getTokenInfo(id);
-  if (!tokenInfo) return res.sendStatus(404);
+  const { tokenInfo } = req.body;
 
   const count = await getCount();
   if (count == undefined) return res.sendStatus(404);
@@ -256,11 +248,7 @@ const getImage = async (req, res) => {
 }
 
 const getThumbnail = async (req, res) => {
-  const id = parseInt(req.params.id);
-  if (isNaN(id)) return res.sendStatus(404);
-
-  const tokenInfo = await getTokenInfo(id);
-  if (!tokenInfo) return res.sendStatus(404);
+  const { tokenInfo } = req.body;
 
   const count = await getCount();
   if (count == undefined) return res.sendStatus(404);
@@ -282,4 +270,30 @@ let owners = provider.getOwners();
 let stats = initMetadataStats();
 let statsHighestKnownToken = null;
 
-module.exports = { getMetadata, getMetadataStats, getLive, getImage, getThumbnail, getOwnedIds };
+const idMiddleware = async (req, res, next) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) return res.sendStatus(404);
+
+  req.body.id = id;
+  return next();
+}
+const tokenInfoMiddleware = async (req, res, next) => {
+  const { id } = req.body;
+
+  const tokenInfo = await getTokenInfo(id);
+  if (!tokenInfo) return res.sendStatus(404);
+
+  req.body.tokenInfo = tokenInfo;
+  return next();
+}
+
+router.get('/owned/:address', getOwnedIds);
+// needs id
+router.get('/api/:id', idMiddleware, getMetadata);
+router.get('/stats/:id', idMiddleware, getMetadataStats);
+// needs tokenInfo
+router.get('/live/:id', idMiddleware, tokenInfoMiddleware, getLive);
+router.get('/static/:id', idMiddleware, tokenInfoMiddleware, getImage);
+router.get('/thumbnail/:id', idMiddleware, tokenInfoMiddleware, getThumbnail);
+
+module.exports = router;
