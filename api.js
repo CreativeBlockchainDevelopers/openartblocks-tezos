@@ -188,7 +188,8 @@ const getMetadataStats = async (req, res) => {
     metadata.attributes.forEach(attribute => {
       const name = attribute.name;
       const value = attribute.value;
-      statsMetadata[name] = allStats.get(name).get(value) / (statsHighestKnownToken + 1);
+      const freq = (allStats.get(name).get(value) / (statsHighestKnownToken + 1))*100;
+      statsMetadata[name] = freq !== 0 && freq !== 100 ? freq.toFixed(2) : freq.toString();
     });
 
     if (statsHighestKnownToken !== null && id > statsHighestKnownToken) {
