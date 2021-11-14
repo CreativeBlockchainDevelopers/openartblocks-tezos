@@ -2,6 +2,7 @@ const { parse } = require('./parse_script');
 const { getStaticImagePath, getThumbnailPath, getMetadata: getGeneratedMetadata, inject } = require('./render');
 const { readFileSync } = require('fs');
 const provider = require('./tezos');
+const { Mutex } = require("async-mutex");
 
 const HOST = process.env.HOST ?? `http://localhost:${process.env.PORT || 3333}`;
 
@@ -43,6 +44,7 @@ async function refreshInfos() {
     html: HTML[Number(res[0])] ?? null,
     lastUpdated: new Date(),
     scriptType: Number(res[0]),
+    tokenCount: await provider.getTotalNumber(),
   };
 }
 setTimeout(refreshInfos, 5000);
@@ -50,33 +52,52 @@ setTimeout(refreshInfos, 5000);
 async function initMetadataStats() {
   const nTokens = await provider.getTotalNumber();
 
-  const allStats = await updateMetadataStats(new Map(), 0, nTokens - 1);
+  const allStats = await updateMetadataStats(new Map(), nTokens - 1);
 
   return allStats;
 }
 
-async function updateMetadataStats(allStats, start, stop) {
-  const metadata = [];
-  const batchSize = 5;
-  for (let i = start; i <= stop; i += batchSize) {
-    const metadataPromise = [];
-    for (let j = i; j < i + batchSize && j <= stop; j++)
-      metadataPromise.push(generateMetadata(j));
+const mutex = new Mutex();
+let biggestStop = -1;
 
-    metadata.push(...(await Promise.all(metadataPromise)));
+async function updateMetadataStats(allStats, stop) {
+  if (stop <= biggestStop) {
+    return;
   }
+  biggestStop = stop;
 
-  metadata.forEach(metadata => {
-    metadata.attributes.forEach(({name, value}) => {
-      if (!allStats.has(name)) allStats.set(name, new Map());
-      if (!allStats.get(name).has(value)) allStats.get(name).set(value, 0);
-      allStats.get(name).set(value, allStats.get(name).get(value) + 1);
+  const release = await mutex.acquire();
+  try {
+    if (stop <= statsHighestKnownToken) {
+      release();
+      return;
+    }
+    const start = statsHighestKnownToken === null ? 0 : statsHighestKnownToken + 1;
+
+    const metadata = [];
+    const batchSize = 5;
+    for (let i = start; i <= stop; i += batchSize) {
+      const metadataPromise = [];
+      for (let j = i; j < i + batchSize && j <= stop; j++)
+        metadataPromise.push(generateMetadata(j));
+
+      metadata.push(...(await Promise.all(metadataPromise)));
+    }
+
+    metadata.forEach(metadata => {
+      metadata.attributes.forEach(({ name, value }) => {
+        if (!allStats.has(name)) allStats.set(name, new Map());
+        if (!allStats.get(name).has(value)) allStats.get(name).set(value, 0);
+        allStats.get(name).set(value, allStats.get(name).get(value) + 1);
+      });
     });
-  });
 
-  statsHighestKnownToken = stop;
+    statsHighestKnownToken = stop;
 
-  return allStats;
+    return allStats;
+  } finally {
+    release();
+  }
 }
 
 setInterval(async () => {
@@ -159,11 +180,11 @@ const getMetadata = async (req, res) => {
   try {
     const metadata = await generateMetadata(id);
 
-    if (statsHighestKnownToken !== null && id > statsHighestKnownToken) {
-      stats = updateMetadataStats((await stats), statsHighestKnownToken + 1, id);
-    }
+    res.json(metadata);
 
-    return res.json(metadata);
+    if (statsHighestKnownToken !== null && id > statsHighestKnownToken) {
+      stats = updateMetadataStats((await stats), id);
+    }
   } catch (status) {
     return res.sendStatus(status);
   }
@@ -182,15 +203,15 @@ const getMetadataStats = async (req, res) => {
     const statsMetadata = {};
 
     metadata.attributes.forEach(({ name, value }) => {
-      const freq = (allStats.get(name).get(value) / (statsHighestKnownToken + 1))*100;
+      const freq = (allStats.get(name).get(value) / (statsHighestKnownToken + 1)) * 100;
       statsMetadata[name] = freq !== 0 && freq !== 100 ? freq.toFixed(2) : freq.toString();
     });
 
-    if (statsHighestKnownToken !== null && id > statsHighestKnownToken) {
-      stats = updateMetadataStats(await stats, statsHighestKnownToken + 1, id);
-    }
+    res.json(statsMetadata);
 
-    return res.json(statsMetadata);
+    if (statsHighestKnownToken !== null && id > statsHighestKnownToken) {
+      stats = updateMetadataStats(await stats, id);
+    }
   } catch (status) {
     return res.sendStatus(status);
   }
