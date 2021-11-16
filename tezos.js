@@ -1,71 +1,70 @@
 const { TezosToolkit } = require('@taquito/taquito');
 const { Tzip16Module, tzip16 } = require('@taquito/tzip16');
-const { Tzip12Module, tzip12 } = require('@taquito/tzip12');
 const { getTokenHash, setTokenHash } = require('./redis');
 
+const tezosInstances = new Map();
 
-const TEZOS_NODE_URI = process.env.TEZOS_NODE_URI || "https://mainnet.api.tez.ie";
-// const TEZOS_NODE_URI = process.env.TEZOS_NODE_URI || "https://granadanet.smartpy.io";
-
-const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS;
-
-const Tezos = new TezosToolkit(TEZOS_NODE_URI);
-Tezos.addExtension(new Tzip16Module());
-Tezos.addExtension(new Tzip12Module());
-
-function hex2utf8(hexx) {
-  const buff = Buffer.from(hexx, 'hex');
-  const utf8 = buff.toString('utf-8');
-  return utf8;
+function getTezosInstance(nodeUri) {
+  let tezos = tezosInstances.get(nodeUri);
+  if (tezos === undefined) {
+    tezos = new TezosToolkit(nodeUri);
+    tezos.addExtension(new Tzip16Module());
+    tezosInstances.set(nodeUri, tezos);
+  }
+  return tezos;
 }
-const contractPromise = Tezos.contract.at(CONTRACT_ADDRESS, tzip16);
 
-const hashes = new Map();
-hashes.set(0, new Map());
-
-const getHash = async (id) => {
-  if (hashes.get(0).has(id)) {
-    return hashes.get(0).get(id);
+class TezosProvider {
+  constructor(contractAddress, nodeUri = "https://mainnet.api.tez.ie") {
+    this.contractAddress = contractAddress;
+    this.contract = getTezosInstance(nodeUri).contract.at(contractAddress, tzip16);
+    this.contract.then(() => this.getOwners());
+    this.hashes = new Map();
+    this.hashes.set(0, new Map());
   }
 
-  let tokenHash;
-  tokenHash = await getTokenHash(0, id);
-  if (tokenHash) return tokenHash;
+  async getHash(id) {
+    if (this.hashes.get(0).has(id)) {
+      return this.hashes.get(0).get(id);
+    }
 
-  const storage = await (await contractPromise).storage();
-  tokenHash = await storage.hashes.get(id);
-  hashes.get(0).set(id, tokenHash);
-  setTokenHash(0, id, tokenHash);
+    let tokenHash;
+    tokenHash = await getTokenHash(0, id);
+    if (tokenHash) return tokenHash;
 
-  return tokenHash;
-};
+    const storage = await (await this.contract).storage();
+    tokenHash = await storage.hashes.get(id);
+    this.hashes.get(0).set(id, tokenHash);
+    setTokenHash(0, id, tokenHash);
 
-const getScript = async () => {
-  const storage = await (await contractPromise).storage();
-  return storage.script;
-};
-
-const getTotalNumber = async () => {
-  const storage = await (await contractPromise).storage();
-  return storage.all_tokens.toNumber();
-};
-
-const getOwners = async () => {
-  const storage = await (await contractPromise).storage();
-  const n = storage.all_tokens.toNumber();
-  const allTokenIds = Array(n).fill(0).map((_, i) => i);
-  const ledger = new Map([
-    ...(await storage.ledger.getMultipleValues(allTokenIds)).entries(),
-  ]);
-
-  const owners = {};
-  for (const [id, add] of ledger.entries()) {
-    if (!owners[add]) owners[add] = [];
-    owners[add].push(id);
+    return tokenHash;
   }
-  return owners;
-};
 
-setTimeout(getOwners, 2000)
+  async getScript() {
+    const storage = await (await this.contract).storage();
+    return storage.script;
+  }
 
-module.exports = { getHash, getScript, getOwners, getTotalNumber };
+  async getTotalNumber() {
+    const storage = await (await this.contract).storage();
+    return storage.all_tokens.toNumber();
+  }
+
+  async getOwners() {
+    const storage = await (await this.contract).storage();
+    const n = storage.all_tokens.toNumber();
+    const allTokenIds = Array(n).fill(0).map((_, i) => i);
+    const ledger = new Map([
+      ...(await storage.ledger.getMultipleValues(allTokenIds)).entries(),
+    ]);
+
+    const owners = {};
+    for (const [id, add] of ledger.entries()) {
+      if (!owners[add]) owners[add] = [];
+      owners[add].push(id);
+    }
+    return owners;
+  }
+}
+
+module.exports = { TezosProvider };

@@ -2,7 +2,7 @@ const { Mutex } = require("async-mutex");
 const { readFileSync } = require('fs');
 
 const { parse } = require('./parse_script');
-const provider = require('./tezos');
+const { TezosProvider } = require('./tezos');
 const { getStaticImagePath, getThumbnailPath, getMetadata: getGeneratedMetadata } = require('./render');
 const { injectHTML } = require('./templating');
 
@@ -216,6 +216,6 @@ class Collection {
   }
 }
 
-const collections = [new Collection(0, provider)];
+const collections = [new Collection(0, new TezosProvider(process.env.CONTRACT_ADDRESS))];
 
 module.exports = { collections };
