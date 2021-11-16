@@ -216,6 +216,6 @@ class Collection {
   }
 }
 
-const collections = [new Collection(0, new TezosProvider(process.env.CONTRACT_ADDRESS))];
+const collections = [new Collection(0, new TezosProvider(process.env.CONTRACT_ADDRESS, process.env.TEZOS_NODE_URI))];
 
 module.exports = { collections };
