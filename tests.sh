@@ -28,7 +28,7 @@ RETURN_CODE=$(expr $(test_url "stats") + ${RETURN_CODE})
 RETURN_CODE=$(expr $(test_url "live") + ${RETURN_CODE})
 RETURN_CODE=$(expr $(test_url "static") + ${RETURN_CODE})
 RETURN_CODE=$(expr $(test_url "thumbnail") + ${RETURN_CODE})
-# RETURN_CODE=$(expr $(test_url "owned") + ${RETURN_CODE})
+RETURN_CODE=$(expr $(test_url "owned") + ${RETURN_CODE})
 
 kill $(jobs -p)
 
