@@ -34,7 +34,7 @@ class Collection {
   }
 
   async tokenExists(id) {
-    return (await this.getTokenCount() > id) || !!(await this.getTokenHash(id))
+    return (id >= 0 && await this.getTokenCount() > id) || !!(await this.getTokenHash(id))
   }
 
   async getOwnedTokenIds(address) {
