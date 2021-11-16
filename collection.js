@@ -141,9 +141,9 @@ class Collection {
     let metadata = {
       decimals: 0,
       // minter: 'would require an index',
-      artifactUri: `${HOST}/live/${id}`,
-      displayUri: `${HOST}/static/${id}`,
-      thumbnailUri: `${HOST}/thumbnail/${id}`,
+      artifactUri: `${HOST}/${this.id}/live/${id}`,
+      displayUri: `${HOST}/${this.id}/static/${id}`,
+      thumbnailUri: `${HOST}/${this.id}/thumbnail/${id}`,
       isBooleanAmount: true,
 
       // not standard
