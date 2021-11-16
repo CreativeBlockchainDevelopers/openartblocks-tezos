@@ -6,6 +6,7 @@ const { writeFile, readFile, access } = promises;
 const Jimp = require('jimp');
 
 const redis = require('./redis');
+const { inject } = require('./templating');
 const HTML_p5 = readFileSync('templates/p5_render.html').toString();
 const HTML_svg = readFileSync('templates/svg_render.html').toString();
 
@@ -120,6 +121,4 @@ const getMetadata = async (script, tokenInfo, count) => {
   return data;
 }
 
-const inject = (str, map) => Object.entries(map)
-  .reduce((acc, [k, v]) => acc.replaceAll(`\'{{INJECT_${k.toUpperCase()}_HERE}}\'`, v), str);
-module.exports = { getStaticImagePath, getThumbnailPath, getMetadata, inject };
+module.exports = { getStaticImagePath, getThumbnailPath, getMetadata };

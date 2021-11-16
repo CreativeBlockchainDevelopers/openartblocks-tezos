@@ -1,7 +1,9 @@
 const express = require('express');
-const router = require('./api');
+require('express-async-errors');
 const compression = require('compression');
 const cors = require('cors');
+
+const router = require('./api');
 
 // initialize express app
 const app = express();
