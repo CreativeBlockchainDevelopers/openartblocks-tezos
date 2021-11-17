@@ -28,8 +28,12 @@ class Collection {
 
     setInterval(async () => {
       const ownersPromise = this.provider.getOwners();
-      await ownersPromise;
-      this.owners = ownersPromise;
+      try {
+        await ownersPromise;
+        this.owners = ownersPromise;
+      } catch (error) {
+        console.error('error in getOwners setInterval:', error);
+      }
     }, 60 * 1000);
   }
 
